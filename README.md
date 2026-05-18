@@ -9,18 +9,45 @@
 HJ 1239.3-2021《Heavy-duty Vehicle Emission Remote Monitoring Technical Specification — Part 3: Communication Protocol and Data Format》
 Java SDK implementation, strictly conforming to Section 5 (Enterprise Platform Communication Protocol) and Section 4.5 (Data Unit Format).
 
+## Features
+
+- **Full DataType coverage** (10/10): Login, Realtime, Complement, Logout, TimeSync, EmissionCheck, PlatformLogin, PlatformLogout, KeyExchange
+- **Full MessageType coverage** (6/6): OBD, DPF/SCR, TWC/NOx, Hybrid, TWC/NOx2, EmissionCheck
+- **Config-driven**: strictMode (throw vs warn) + enableValidation (auto-validate on decode)
+- **TCP transport**: PacketFramer (0x7E sync framing) + TcpClient (reconnect, heartbeat, sendAndWait RPC)
+- **Crypto layer**: PacketEncryption interface (PLAIN/RSA/AES) + NoOpEncryption + KeyExchangeHandler (RSA key gen)
+- **JSON**: Jackson-based JsonUtil (optional dependency)
+- **SLF4J logging**: structured, level-controlled
+- **Dynamic ByteBuf**: auto-expanding up to 64KB
+- **Zero mandatory runtime deps**: only SLF4J API required; Jackson is optional
+
 ## Protocol Compliance
 
-| Standard Section | Content | Implementation |
-|---|---|---|
-| 5.6.3 Table 16 | Packet structure (`~~` + cmd + resp + VIN + encrypt + len + data + BCC) | `DataPacket.java` |
-| 5.6.4 Table 17 | Command unit codes (0x01–0x09) | `DataType.java` |
-| 4.4.3 Table 1 | Vehicle terminal data units | `DataType.java` |
-| 4.5.2 Table 2 | Real-time info data format | `PacketEncoder.java` |
-| 4.5.2.3 Table 4 | Message type flags | `MessageType.java` |
-| 4.5.2.4 Table 5 | DPF/SCR engine info (37 bytes, 19 fields) | `EmissionData.java` |
-| 4.6 Table 14 | Time definition (BYTE[6]) | `TimeUtil.java` |
-| 4.5.2.9 Table 10 | Position status bit definition | `EmissionData.positionStatus` |
+### DataType Coverage (10/10)
+
+| Code | Name | Encode | Decode |
+|:--:|------|:--:|:--:|
+| 0x01 | Vehicle Login | `encodeVehicleLogin` (8 fields) | `decodeVehicleLogin` → VehicleInfo |
+| 0x02 | Realtime Data | `encodeRealtimeData` | `decodeRealtimeEmission` → EmissionData |
+| 0x03 | Complement Data | `encodeComplementData` | decode → EmissionData |
+| 0x04 | Vehicle Logout | `encodeVehicleLogout` | decode → DataPacket |
+| 0x05 | Terminal Time Sync | `encodeTimeSync` | decode → DataPacket |
+| 0x06 | Emission Check | `encodeEmissionCheck` | `decodeEmissionCheckData` → EmissionCheckData |
+| 0x07 | Platform Login | `encodePlatformLogin` | decode → DataPacket |
+| 0x08 | Platform Logout | `encodePlatformLogout` | decode → DataPacket |
+| 0x09 | Key Exchange | `encodeKeyExchangeRequest` (RSA) | `decodeKeyExchange` → KeyExchangeData |
+| 0xFF | Unknown | — | — |
+
+### MessageType Coverage (6/6)
+
+| Code | Name | Encode | Decode |
+|:--:|------|:--:|:--:|
+| 0x01 | OBD Engine Data | `encodeObdEngineData` | `decodeObdEngineData` → ObdEngineData |
+| 0x02 | DPF/SCR Diesel | `encodeRealtimeData` | `decodeRealtimeEmission` → EmissionData |
+| 0x03 | TWC/NOx | — | `decodeRealtimeEmission` → EmissionData |
+| 0x04 | Hybrid | `encodeHybridData` | `decodeHybridData` → HybridData |
+| 0x05 | TWC/NOx2 | — | `decodeRealtimeEmission` → EmissionData |
+| 0x80 | Emission Check | `encodeEmissionCheck` | `decodeEmissionCheckData` → EmissionCheckData |
 
 ## Performance
 
@@ -46,34 +73,59 @@ Java SDK implementation, strictly conforming to Section 5 (Enterprise Platform C
 ```java
 Gb1239Sdk sdk = new Gb1239Sdk();
 
-// Encode real-time emission data (Table 5 DPF+SCR)
+// ── Encode real-time emission data (Table 5 DPF+SCR) ──
 EmissionData em = EmissionData.builder()
     .timestamp(LocalDateTime.now())
-    .vehicleSpeed(60.0)
-    .engineSpeed(1500.0)
-    .fuelConsumptionRate(8.5)
-    .engineCoolantTemp(85.0)
-    .scrUpstreamNox(45.0)
-    .scrDownstreamNox(5.0)
-    .reagentRemaining(80.0)
-    .intakePressure(100.0)
-    .exhaustFlow(200.0)
-    .dpfDifferentialPressure(1.5)
-    .reagentLevel(75.0)
-    .positionStatus(0x01)  // GPS valid
-    .longitude(116.397128)
-    .latitude(39.916527)
-    .odometer(12345.6)
+    .vehicleSpeed(60.0).engineSpeed(1500.0).fuelConsumptionRate(8.5)
+    .engineCoolantTemp(85.0).scrUpstreamNox(45.0).scrDownstreamNox(5.0)
+    .reagentRemaining(80.0).intakePressure(100.0).exhaustFlow(200.0)
+    .dpfDifferentialPressure(1.5).reagentLevel(75.0)
+    .positionStatus(0x01).longitude(116.397128).latitude(39.916527).odometer(12345.6)
     .build();
 
 byte[] packet = sdk.encodeRealtimeData(em, "LSVAM41Z6F2000001", 1);
 
-// Decode
+// ── Decode & validate ──
 DataPacket decoded = sdk.decode(packet);
 EmissionData result = sdk.decodeRealtimeEmission(decoded);
-
-// Validate
 ValidationResult vr = sdk.validateEmission(result);
+
+// ── Vehicle login with full fields ──
+VehicleInfo vi = VehicleInfo.builder()
+    .vin("LSVAM41Z6F2000001").fuelType(FuelType.DIESEL)
+    .emissionStandard(EmissionStandard.CHINA_VI_B)
+    .plateNumber("BJ12345").plateColor("BLUE")
+    .manufacturer("DFM").model("TianLong").modelYear(2024)
+    .build();
+byte[] login = sdk.encodeVehicleLogin(vi, 0);
+
+// ── OBD engine data ──
+ObdEngineData obd = ObdEngineData.builder()
+    .timestamp(LocalDateTime.now()).milOn(true).dtcCount(3)
+    .egrErrorRate(5.0).dpfSootLoad(45.0).dpfAshLoad(2.5)
+    .engineRuntime(360000).positionStatus(0x01)
+    .build();
+byte[] obdPkt = sdk.encodeObdEngineData(obd, "LSVAM41Z6F2000001", 1);
+
+// ── Hybrid data ──
+HybridData hd = HybridData.builder()
+    .timestamp(LocalDateTime.now()).vehicleSpeed(50.0).engineSpeed(1200.0)
+    .motorSpeed(3000.0).motorTorque(150.0).batterySoc(75.0)
+    .batteryVoltage(350.0).hybridMode(1).build();
+byte[] hybridPkt = sdk.encodeHybridData(hd, "LSVAM41Z6F2000001", 1);
+
+// ── Key exchange ──
+byte[] keyEx = sdk.encodeKeyExchangeRequestWithRsaKey("LSVAM41Z6F2000001", 1);
+
+// ── TCP client ──
+TcpClient client = new TcpClient("platform.example.com", 7001);
+client.setHeartbeatPacket(sdk.encodeHeartbeat("LSVAM41Z6F2000001", 0));
+client.setPacketHandler(pkt -> {
+    EmissionData data = sdk.decodeRealtimeEmission(pkt);
+    System.out.println("Speed: " + data.getVehicleSpeed());
+});
+client.connect();
+client.start();
 ```
 
 ## Packet Format (Table 16)
@@ -122,17 +174,24 @@ Offset | Size | Field                      | Resolution
 ## Build
 
 ```bash
-mvn compile   # Compile (zero runtime dependencies)
-mvn test      # Test (36 tests)
-mvn package   # Package
+mvn compile   # Compile (26 source files)
+mvn test      # Test (52 tests)
+mvn package   # Package JAR
 ```
 
 ## Key Features
 
-- **Zero runtime dependencies** — Java 17 standard library only
+- **26 source files** — protocol codec, 6 data models, 4 validators, crypto, TCP transport, JSON
+- **52 unit/integration tests** — codec roundtrip, concurrency, throughput, corruption detection, BCC, validation
+- **SLF4J logging** — structured, level-controlled (requires slf4j-api)
+- **Jackson JSON** — optional, `JsonUtil` with JavaTimeModule support
+- **Config-driven** — `Gb1239Config` controls strict mode (throw vs warn) and auto-validation
+- **Dynamic ByteBuf** — auto-expanding buffer with max capacity guard
+- **TCP transport** — `PacketFramer` (0x7E sync) + `TcpClient` (reconnect, heartbeat, RPC)
+- **Crypto layer** — `PacketEncryption` interface + `KeyExchangeHandler` (RSA2048 key gen)
 - **BCC (XOR) checksum** — from command byte to last data unit byte
 - **Invalid value handling** — 0xFF/0xFFFF/0xFFFFFFFF mark unavailable sensors
-- **Time encoding** — BYTE[6] GMT+8 (YY,MM,DD,hh,mm,ss)
+- **Time encoding** — BYTE[6] (YY,MM,DD,hh,mm,ss)
 - **Position status bits** — bit0=valid, bit1=N/S, bit2=E/W
 - **Builder pattern** — fully immutable data models
 - **Thread-safe** — all codec/validator operations are stateless
