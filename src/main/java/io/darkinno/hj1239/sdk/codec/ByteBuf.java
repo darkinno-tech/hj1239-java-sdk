@@ -4,14 +4,22 @@ import java.nio.charset.StandardCharsets;
 
 public class ByteBuf {
 
-    private final byte[] buffer;
+    private static final int DEFAULT_MAX_CAPACITY = 65536;
+
+    private byte[] buffer;
     private int readIndex;
     private int writeIndex;
+    private final int maxCapacity;
 
     public ByteBuf(int capacity) {
+        this(capacity, DEFAULT_MAX_CAPACITY);
+    }
+
+    public ByteBuf(int capacity, int maxCapacity) {
         this.buffer = new byte[capacity];
         this.readIndex = 0;
         this.writeIndex = 0;
+        this.maxCapacity = maxCapacity;
     }
 
     public ByteBuf(byte[] data) {
@@ -21,6 +29,7 @@ public class ByteBuf {
         this.buffer = data.clone();
         this.readIndex = 0;
         this.writeIndex = data.length;
+        this.maxCapacity = Math.max(data.length, DEFAULT_MAX_CAPACITY);
     }
 
     public byte readByte() {
@@ -76,7 +85,7 @@ public class ByteBuf {
                 break;
             }
         }
-        return new String(bytes, 0, end, StandardCharsets.UTF_8);
+        return new String(bytes, 0, end, StandardCharsets.ISO_8859_1);
     }
 
     public void writeByte(byte value) {
@@ -120,7 +129,7 @@ public class ByteBuf {
     }
 
     public void writeString(String value, int length) {
-        byte[] bytes = value != null ? value.getBytes(StandardCharsets.UTF_8) : new byte[0];
+        byte[] bytes = value != null ? value.getBytes(StandardCharsets.ISO_8859_1) : new byte[0];
         ensureCapacity(length);
         int count = Math.min(bytes.length, length);
         System.arraycopy(bytes, 0, buffer, writeIndex, count);
@@ -164,9 +173,15 @@ public class ByteBuf {
     private void ensureCapacity(int additional) {
         int required = writeIndex + additional;
         if (required > buffer.length) {
-            throw new IndexOutOfBoundsException(
-                    "Buffer overflow: required " + required
-                            + ", capacity " + buffer.length);
+            if (required > maxCapacity) {
+                throw new IndexOutOfBoundsException(
+                        "Buffer overflow: required " + required
+                                + " exceeds max capacity " + maxCapacity);
+            }
+            int newCapacity = Math.min(Math.max(buffer.length * 2, required), maxCapacity);
+            byte[] newBuffer = new byte[newCapacity];
+            System.arraycopy(buffer, 0, newBuffer, 0, writeIndex);
+            buffer = newBuffer;
         }
     }
 }

@@ -27,6 +27,6 @@ public enum MessageType {
         for (MessageType t : values()) {
             if (t.code == code) return t;
         }
-        throw new IllegalArgumentException("Unknown message type: 0x" + Integer.toHexString(code));
+        return null;
     }
 }

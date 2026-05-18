@@ -6,12 +6,14 @@ public final class CrcUtil {
     }
 
     public static byte xorChecksum(byte[] data, int offset, int length) {
-        if (data == null || length <= 0) {
-            return 0;
-        }
+        if (data == null) throw new IllegalArgumentException("data must not be null");
+        if (offset < 0 || offset >= data.length)
+            throw new IllegalArgumentException("offset " + offset + " out of bounds [0, " + (data.length - 1) + "]");
+        if (length <= 0) throw new IllegalArgumentException("length must be positive, got " + length);
+        if (offset + length > data.length)
+            throw new IllegalArgumentException("offset+length " + (offset + length) + " exceeds data length " + data.length);
         byte checksum = 0;
-        int end = Math.min(offset + length, data.length);
-        for (int i = offset; i < end; i++) {
+        for (int i = offset; i < offset + length; i++) {
             checksum ^= data[i];
         }
         return checksum;
@@ -28,12 +30,14 @@ public final class CrcUtil {
     private static final int CRC16_POLY = 0xA001;
 
     public static int crc16(byte[] data, int offset, int length) {
-        if (data == null || length <= 0) {
-            return 0;
-        }
+        if (data == null) throw new IllegalArgumentException("data must not be null");
+        if (offset < 0 || offset >= data.length)
+            throw new IllegalArgumentException("offset " + offset + " out of bounds [0, " + (data.length - 1) + "]");
+        if (length <= 0) throw new IllegalArgumentException("length must be positive, got " + length);
+        if (offset + length > data.length)
+            throw new IllegalArgumentException("offset+length " + (offset + length) + " exceeds data length " + data.length);
         int crc = CRC16_INIT;
-        int end = Math.min(offset + length, data.length);
-        for (int i = offset; i < end; i++) {
+        for (int i = offset; i < offset + length; i++) {
             crc ^= (data[i] & 0xFF);
             for (int j = 0; j < 8; j++) {
                 if ((crc & 0x0001) != 0) {

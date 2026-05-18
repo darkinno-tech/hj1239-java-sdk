@@ -1,8 +1,6 @@
 package io.darkinno.hj1239.sdk.codec;
 
-import io.darkinno.hj1239.sdk.model.DataPacket;
-import io.darkinno.hj1239.sdk.model.EmissionData;
-import io.darkinno.hj1239.sdk.model.VehicleInfo;
+import io.darkinno.hj1239.sdk.model.*;
 import io.darkinno.hj1239.sdk.model.enums.DataType;
 import io.darkinno.hj1239.sdk.model.enums.MessageType;
 import io.darkinno.hj1239.sdk.util.CrcUtil;
@@ -52,6 +50,19 @@ public final class PacketEncoder {
     static final int INV_WORD = 0xFFFF;
     static final long INV_DWORD = 0xFFFFFFFFL;
 
+    static final double EGR_SCALE = 0.5;
+    static final double SOOT_SCALE = 0.5;
+    static final double ASH_SCALE = 0.1;
+    static final double MOTOR_SPEED_SCALE = 0.25;
+    static final double MOTOR_TORQUE_SCALE = 0.5;
+    static final double MOTOR_TORQUE_OFFSET = -2000;
+    static final double SOC_SCALE = 0.5;
+    static final double VOLTAGE_SCALE = 0.1;
+    static final double CURRENT_SCALE = 0.1;
+    static final double CURRENT_OFFSET = -1000;
+    static final double CO_SCALE = 0.01;
+    static final double PM_SCALE = 0.01;
+
     // ── public API ──
 
     public static byte[] encode(DataPacket pkt) {
@@ -76,11 +87,17 @@ public final class PacketEncoder {
     public static byte[] encodeVehicleLogin(VehicleInfo vi, int seq) {
         if (vi == null) throw new IllegalArgumentException("vehicleInfo must not be null");
         validateSeq(seq);
-        ByteBuf du = new ByteBuf(128);
+        ByteBuf du = new ByteBuf(256);
         du.writeBytes(TimeUtil.encode(LocalDateTime.now()));
         du.writeShort((short) seq);
         du.writeString(vi.getVin(), 17);
         du.writeByte((byte) vi.getFuelType().getCode());
+        du.writeByte((byte) vi.getEmissionStandard().getCode());
+        du.writeString(vi.getPlateNumber() != null ? vi.getPlateNumber() : "", 12);
+        du.writeString(vi.getPlateColor() != null ? vi.getPlateColor() : "", 8);
+        du.writeString(vi.getManufacturer() != null ? vi.getManufacturer() : "", 32);
+        du.writeString(vi.getModel() != null ? vi.getModel() : "", 32);
+        du.writeShort((short) vi.getModelYear());
 
         return build(DataType.VEHICLE_LOGIN.getCode(), 0xFE, 0x01, vi.getVin(), du.toByteArray());
     }
@@ -113,6 +130,97 @@ public final class PacketEncoder {
     }
 
     // ── Table 5 body: DPF+SCR diesel engine (37 bytes) ──
+
+    public static byte[] encodeVehicleLogout(String vin, int seq) {
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(16);
+        du.writeBytes(TimeUtil.encode(LocalDateTime.now()));
+        du.writeShort((short) seq);
+        return build(DataType.VEHICLE_LOGOUT.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
+
+    public static byte[] encodeComplementData(EmissionData em, String vin, int seq) {
+        if (em == null) throw new IllegalArgumentException("emission must not be null");
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(512);
+        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        du.writeShort((short) seq);
+        du.writeByte((byte) MessageType.ENGINE_DPF_SCR_DATA.getCode());
+        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        encodeTable5Body(du, em);
+        return build(DataType.REPLENISH_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
+
+    public static byte[] encodeTimeSync(String vin, int seq) {
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(16);
+        du.writeBytes(TimeUtil.encode(LocalDateTime.now()));
+        du.writeShort((short) seq);
+        return build(DataType.TERMINAL_TIME_SYNC.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
+
+    public static byte[] encodePlatformLogin(String platformId, String username, String password, int seq) {
+        if (platformId == null) throw new IllegalArgumentException("platformId must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(128);
+        du.writeBytes(TimeUtil.encode(LocalDateTime.now()));
+        du.writeShort((short) seq);
+        du.writeString(platformId, 12);
+        du.writeString(username != null ? username : "", 16);
+        du.writeString(password != null ? password : "", 16);
+        return build(DataType.PLATFORM_LOGIN.getCode(), 0xFE, 0x01, platformId, du.toByteArray());
+    }
+
+    public static byte[] encodePlatformLogout(String platformId, int seq) {
+        if (platformId == null) throw new IllegalArgumentException("platformId must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(32);
+        du.writeBytes(TimeUtil.encode(LocalDateTime.now()));
+        du.writeShort((short) seq);
+        return build(DataType.PLATFORM_LOGOUT.getCode(), 0xFE, 0x01, platformId, du.toByteArray());
+    }
+
+    public static byte[] encodeObdEngineData(ObdEngineData obd, String vin, int seq) {
+        if (obd == null) throw new IllegalArgumentException("obd must not be null");
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(256);
+        du.writeBytes(TimeUtil.encode(obd.getTimestamp()));
+        du.writeShort((short) seq);
+        du.writeByte((byte) MessageType.OBD_ENGINE_DATA.getCode());
+        du.writeBytes(TimeUtil.encode(obd.getTimestamp()));
+        encodeObdBody(du, obd);
+        return build(DataType.REALTIME_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
+
+    public static byte[] encodeHybridData(HybridData hd, String vin, int seq) {
+        if (hd == null) throw new IllegalArgumentException("hybrid data must not be null");
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(256);
+        du.writeBytes(TimeUtil.encode(hd.getTimestamp()));
+        du.writeShort((short) seq);
+        du.writeByte((byte) MessageType.ENGINE_HYBRID_DATA.getCode());
+        du.writeBytes(TimeUtil.encode(hd.getTimestamp()));
+        encodeHybridBody(du, hd);
+        return build(DataType.REALTIME_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
+
+    public static byte[] encodeEmissionCheck(EmissionCheckData ec, String vin, int seq) {
+        if (ec == null) throw new IllegalArgumentException("emission check data must not be null");
+        if (vin == null) throw new IllegalArgumentException("vin must not be null");
+        validateSeq(seq);
+        ByteBuf du = new ByteBuf(256);
+        du.writeBytes(TimeUtil.encode(ec.getTimestamp()));
+        du.writeShort((short) seq);
+        du.writeByte((byte) MessageType.EMISSION_CHECK_DATA.getCode());
+        du.writeBytes(TimeUtil.encode(ec.getTimestamp()));
+        encodeEmissionCheckBody(du, ec);
+        return build(DataType.EMISSION_CHECK.getCode(), 0xFE, 0x01, vin, du.toByteArray());
+    }
 
     private static void encodeTable5Body(ByteBuf b, EmissionData e) {
         b.writeShort(e.getVehicleSpeed() >= 0
@@ -152,6 +260,53 @@ public final class PacketEncoder {
                 ? (int) (e.getLatitude() / DMS_SCALE) : (int) INV_DWORD);
         b.writeInt(e.getOdometer() >= 0
                 ? (int) (e.getOdometer() / ODO_SCALE) : (int) INV_DWORD);
+    }
+
+    private static void encodeObdBody(ByteBuf b, ObdEngineData d) {
+        b.writeByte((byte) (d.isMilOn() ? 0x01 : 0x00));
+        b.writeByte((byte) d.getDtcCount());
+        b.writeByte(d.getEgrErrorRate() >= 0 ? (byte) (d.getEgrErrorRate() / EGR_SCALE) : (byte) INV_BYTE);
+        b.writeByte((byte) d.getScrSystemStatus());
+        b.writeByte((byte) d.getDpfSystemStatus());
+        b.writeByte(d.getDpfSootLoad() >= 0 ? (byte) (d.getDpfSootLoad() / SOOT_SCALE) : (byte) INV_BYTE);
+        b.writeByte(d.getDpfAshLoad() >= 0 ? (byte) (d.getDpfAshLoad() / ASH_SCALE) : (byte) INV_BYTE);
+        b.writeInt((int) d.getEngineRuntime());
+        b.writeByte((byte) d.getPositionStatus());
+        b.writeInt(d.getLongitude() >= 0 ? (int) (d.getLongitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getLatitude() >= 0 ? (int) (d.getLatitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getOdometer() >= 0 ? (int) (d.getOdometer() / ODO_SCALE) : (int) INV_DWORD);
+    }
+
+    private static void encodeHybridBody(ByteBuf b, HybridData d) {
+        b.writeShort(d.getVehicleSpeed() >= 0 ? (short) (d.getVehicleSpeed() * SPD_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getEngineSpeed() >= 0 ? (short) (d.getEngineSpeed() / ENG_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getMotorSpeed() >= 0 ? (short) (d.getMotorSpeed() / MOTOR_SPEED_SCALE) : (short) INV_WORD);
+        b.writeShort(!Double.isNaN(d.getMotorTorque()) ? (short) ((d.getMotorTorque() - MOTOR_TORQUE_OFFSET) / MOTOR_TORQUE_SCALE) : (short) INV_WORD);
+        b.writeByte(d.getBatterySoc() >= 0 ? (byte) (d.getBatterySoc() / SOC_SCALE) : (byte) INV_BYTE);
+        b.writeShort(d.getBatteryVoltage() >= 0 ? (short) (d.getBatteryVoltage() / VOLTAGE_SCALE) : (short) INV_WORD);
+        b.writeShort(!Double.isNaN(d.getBatteryCurrent()) ? (short) ((d.getBatteryCurrent() - CURRENT_OFFSET) / CURRENT_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getFuelConsumptionRate() >= 0 ? (short) (d.getFuelConsumptionRate() / FUEL_SCALE) : (short) INV_WORD);
+        b.writeByte(!Double.isNaN(d.getEngineCoolantTemp()) ? (byte) ((d.getEngineCoolantTemp() - COOLANT_OFFSET) / COOLANT_SCALE) : (byte) INV_BYTE);
+        b.writeByte((byte) d.getHybridMode());
+        b.writeByte((byte) d.getPositionStatus());
+        b.writeInt(d.getLongitude() >= 0 ? (int) (d.getLongitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getLatitude() >= 0 ? (int) (d.getLatitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getOdometer() >= 0 ? (int) (d.getOdometer() / ODO_SCALE) : (int) INV_DWORD);
+    }
+
+    private static void encodeEmissionCheckBody(ByteBuf b, EmissionCheckData d) {
+        b.writeByte((byte) d.getCheckType());
+        b.writeShort(d.getNoxPemsValue() >= 0 ? (short) ((d.getNoxPemsValue() - NOX_OFFSET) / NOX_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getCoPemsValue() >= 0 ? (short) (d.getCoPemsValue() / CO_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getPmPemsValue() >= 0 ? (short) (d.getPmPemsValue() / PM_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getExhaustFlow() >= 0 ? (short) (d.getExhaustFlow() / EXHAUST_SCALE) : (short) INV_WORD);
+        b.writeShort(d.getEngineSpeed() >= 0 ? (short) (d.getEngineSpeed() / ENG_SCALE) : (short) INV_WORD);
+        b.writeByte(!Double.isNaN(d.getEngineTorquePercent()) ? (byte) ((d.getEngineTorquePercent() - TORQUE_OFFSET) / TORQUE_SCALE) : (byte) INV_BYTE);
+        b.writeByte(!Double.isNaN(d.getEngineCoolantTemp()) ? (byte) ((d.getEngineCoolantTemp() - COOLANT_OFFSET) / COOLANT_SCALE) : (byte) INV_BYTE);
+        b.writeByte((byte) d.getPositionStatus());
+        b.writeInt(d.getLongitude() >= 0 ? (int) (d.getLongitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getLatitude() >= 0 ? (int) (d.getLatitude() / DMS_SCALE) : (int) INV_DWORD);
+        b.writeInt(d.getOdometer() >= 0 ? (int) (d.getOdometer() / ODO_SCALE) : (int) INV_DWORD);
     }
 
     private static byte[] build(int cmd, int resp, int encrypt, String vin, byte[] du) {
