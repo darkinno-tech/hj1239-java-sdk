@@ -67,7 +67,6 @@ class ConcurrencyTest {
                 }
             });
         }
-
         latch.await(30, TimeUnit.SECONDS);
         pool.shutdown();
 
