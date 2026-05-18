@@ -24,9 +24,11 @@ public enum MessageType {
     public String getDescription() { return description; }
 
     public static MessageType fromCode(int code) {
-        for (MessageType t : values()) {
+        for (MessageType t : VALUES) {
             if (t.code == code) return t;
         }
         return null;
     }
+
+    private static final MessageType[] VALUES = values();
 }

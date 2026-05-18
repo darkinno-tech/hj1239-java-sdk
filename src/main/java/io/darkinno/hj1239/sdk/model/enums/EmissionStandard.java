@@ -26,11 +26,13 @@ public enum EmissionStandard {
     }
 
     public static EmissionStandard fromCode(int code) {
-        for (EmissionStandard std : values()) {
+        for (EmissionStandard std : VALUES) {
             if (std.code == code) {
                 return std;
             }
         }
         return UNKNOWN;
     }
+
+    private static final EmissionStandard[] VALUES = values();
 }

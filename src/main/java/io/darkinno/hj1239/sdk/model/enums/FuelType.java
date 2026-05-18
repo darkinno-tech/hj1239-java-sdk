@@ -27,11 +27,13 @@ public enum FuelType {
     }
 
     public static FuelType fromCode(int code) {
-        for (FuelType type : values()) {
+        for (FuelType type : VALUES) {
             if (type.code == code) {
                 return type;
             }
         }
         return OTHER;
     }
+
+    private static final FuelType[] VALUES = values();
 }

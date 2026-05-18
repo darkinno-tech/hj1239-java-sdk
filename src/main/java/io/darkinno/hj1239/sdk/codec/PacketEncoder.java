@@ -67,21 +67,8 @@ public final class PacketEncoder {
 
     public static byte[] encode(DataPacket pkt) {
         if (pkt == null) throw new IllegalArgumentException("packet must not be null");
-        ByteBuf buf = new ByteBuf(BUF_SIZE);
-        buf.writeBytes(DataPacket.START_MARKER);
-        buf.writeByte((byte) pkt.getCommandId());
-        buf.writeByte((byte) pkt.getResponseFlag());
-        buf.writeString(pkt.getVehicleId(), VIN_LEN);
-        buf.writeByte((byte) pkt.getEncryptionMode());
-
-        byte[] du = pkt.getDataUnit();
-        buf.writeShort((short) (du.length));
-        buf.writeBytes(du);
-
-        byte[] arr = buf.toByteArray();
-        byte bcc = CrcUtil.xorChecksum(arr, 2, arr.length - 2);
-        buf.writeByte(bcc);
-        return buf.toByteArray();
+        return build(pkt.getCommandId(), pkt.getResponseFlag(),
+                pkt.getEncryptionMode(), pkt.getVehicleId(), pkt.getDataUnit());
     }
 
     public static byte[] encodeVehicleLogin(VehicleInfo vi, int seq) {
@@ -108,13 +95,12 @@ public final class PacketEncoder {
         validateSeq(seq);
         ByteBuf du = new ByteBuf(512);
 
-        // Table 2 header: timestamp(6) + seq(2) + msgType(1) + acqTime(6)
-        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        byte[] ts = TimeUtil.encode(em.getTimestamp());
+        du.writeBytes(ts);
         du.writeShort((short) seq);
         du.writeByte((byte) MessageType.ENGINE_DPF_SCR_DATA.getCode());
-        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        du.writeBytes(ts);
 
-        // Table 5 body
         encodeTable5Body(du, em);
 
         return build(DataType.REALTIME_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
@@ -145,10 +131,11 @@ public final class PacketEncoder {
         if (vin == null) throw new IllegalArgumentException("vin must not be null");
         validateSeq(seq);
         ByteBuf du = new ByteBuf(512);
-        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        byte[] ts = TimeUtil.encode(em.getTimestamp());
+        du.writeBytes(ts);
         du.writeShort((short) seq);
         du.writeByte((byte) MessageType.ENGINE_DPF_SCR_DATA.getCode());
-        du.writeBytes(TimeUtil.encode(em.getTimestamp()));
+        du.writeBytes(ts);
         encodeTable5Body(du, em);
         return build(DataType.REPLENISH_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
     }
@@ -188,10 +175,11 @@ public final class PacketEncoder {
         if (vin == null) throw new IllegalArgumentException("vin must not be null");
         validateSeq(seq);
         ByteBuf du = new ByteBuf(256);
-        du.writeBytes(TimeUtil.encode(obd.getTimestamp()));
+        byte[] ts = TimeUtil.encode(obd.getTimestamp());
+        du.writeBytes(ts);
         du.writeShort((short) seq);
         du.writeByte((byte) MessageType.OBD_ENGINE_DATA.getCode());
-        du.writeBytes(TimeUtil.encode(obd.getTimestamp()));
+        du.writeBytes(ts);
         encodeObdBody(du, obd);
         return build(DataType.REALTIME_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
     }
@@ -201,10 +189,11 @@ public final class PacketEncoder {
         if (vin == null) throw new IllegalArgumentException("vin must not be null");
         validateSeq(seq);
         ByteBuf du = new ByteBuf(256);
-        du.writeBytes(TimeUtil.encode(hd.getTimestamp()));
+        byte[] ts = TimeUtil.encode(hd.getTimestamp());
+        du.writeBytes(ts);
         du.writeShort((short) seq);
         du.writeByte((byte) MessageType.ENGINE_HYBRID_DATA.getCode());
-        du.writeBytes(TimeUtil.encode(hd.getTimestamp()));
+        du.writeBytes(ts);
         encodeHybridBody(du, hd);
         return build(DataType.REALTIME_DATA.getCode(), 0xFE, 0x01, vin, du.toByteArray());
     }
@@ -214,10 +203,11 @@ public final class PacketEncoder {
         if (vin == null) throw new IllegalArgumentException("vin must not be null");
         validateSeq(seq);
         ByteBuf du = new ByteBuf(256);
-        du.writeBytes(TimeUtil.encode(ec.getTimestamp()));
+        byte[] ts = TimeUtil.encode(ec.getTimestamp());
+        du.writeBytes(ts);
         du.writeShort((short) seq);
         du.writeByte((byte) MessageType.EMISSION_CHECK_DATA.getCode());
-        du.writeBytes(TimeUtil.encode(ec.getTimestamp()));
+        du.writeBytes(ts);
         encodeEmissionCheckBody(du, ec);
         return build(DataType.EMISSION_CHECK.getCode(), 0xFE, 0x01, vin, du.toByteArray());
     }

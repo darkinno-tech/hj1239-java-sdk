@@ -143,6 +143,7 @@ public class Gb1239Sdk {
     // ── validate ──
 
     public boolean validateVin(String vin) { return VinValidator.isValid(vin); }
+    public boolean validateVinWithCheckDigit(String vin) { return VinValidator.isValidWithCheckDigit(vin); }
     public boolean validatePlateNumber(String p) { return VinValidator.isValidPlateNumber(p); }
 
     public ValidationResult validateEmission(EmissionData data) {

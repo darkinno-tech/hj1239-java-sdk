@@ -33,11 +33,13 @@ public enum DataType {
     }
 
     public static DataType fromCode(int code) {
-        for (DataType type : values()) {
+        for (DataType type : VALUES) {
             if (type.code == code) {
                 return type;
             }
         }
         return UNKNOWN;
     }
+
+    private static final DataType[] VALUES = values();
 }
