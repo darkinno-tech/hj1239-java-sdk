@@ -70,6 +70,25 @@ Java SDK implementation, strictly conforming to Section 5 (Enterprise Platform C
 </dependency>
 ```
 
+> Published to **GitHub Packages**. Configure `~/.m2/settings.xml`:
+>
+> ```xml
+> <server>
+>     <id>github</id>
+>     <username>YOUR_USERNAME</username>
+>     <password>YOUR_GITHUB_TOKEN</password>
+> </server>
+> ```
+>
+> And add the repository:
+>
+> ```xml
+> <repository>
+>     <id>github</id>
+>     <url>https://maven.pkg.github.com/DarkInno/hj1239-java-sdk</url>
+> </repository>
+> ```
+
 ```java
 Gb1239Sdk sdk = new Gb1239Sdk();
 

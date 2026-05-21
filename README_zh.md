@@ -44,6 +44,25 @@ Java SDK 实现，严格遵循标准中 Section 5（企业平台通讯协议）�
 </dependency>
 ```
 
+> 发布于 **GitHub Packages**。需配置 `~/.m2/settings.xml`：
+>
+> ```xml
+> <server>
+>     <id>github</id>
+>     <username>YOUR_USERNAME</username>
+>     <password>YOUR_GITHUB_TOKEN</password>
+> </server>
+> ```
+>
+> 并添加仓库地址：
+>
+> ```xml
+> <repository>
+>     <id>github</id>
+>     <url>https://maven.pkg.github.com/DarkInno/hj1239-java-sdk</url>
+> </repository>
+> ```
+
 ```java
 Gb1239Sdk sdk = new Gb1239Sdk();
 
