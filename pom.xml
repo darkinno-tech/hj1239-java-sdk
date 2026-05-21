@@ -6,11 +6,34 @@
 
     <groupId>io.darkinno</groupId>
     <artifactId>hj1239-sdk</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>GB1239 SDK</name>
     <description>重型车排放远程监控技术规范 (HJ 1239) Java SDK</description>
+
+    <url>https://github.com/DarkInno/hj1239-java-sdk</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>DarkInno</name>
+            <url>https://github.com/DarkInno</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/DarkInno/hj1239-java-sdk.git</connection>
+        <developerConnection>scm:git:https://github.com/DarkInno/hj1239-java-sdk.git</developerConnection>
+        <url>https://github.com/DarkInno/hj1239-java-sdk</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -60,8 +83,29 @@
         </dependency>
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/DarkInno/hj1239-java-sdk</url>
+        </repository>
+    </distributionManagement>
+
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
