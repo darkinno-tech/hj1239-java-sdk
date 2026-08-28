@@ -1,6 +1,6 @@
 # HJ1239 Java SDK
 
-> *"We are im10furry. Like a stout beer, our best ideas are brewed slowly in the dark, away from the hype."*
+> *"We are darkinno-tech-tech. Like a stout beer, our best ideas are brewed slowly in the dark, away from the hype."*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://jdk.java.net/17/)
@@ -64,7 +64,7 @@ Java SDK implementation, strictly conforming to Section 5 (Enterprise Platform C
 
 ```xml
 <dependency>
-    <groupId>io.im10furry</groupId>
+    <groupId>io.darkinno-tech-tech</groupId>
     <artifactId>hj1239-sdk</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -85,7 +85,7 @@ Java SDK implementation, strictly conforming to Section 5 (Enterprise Platform C
 > ```xml
 > <repository>
 >     <id>github</id>
->     <url>https://maven.pkg.github.com/im10furry/hj1239-java-sdk</url>
+>     <url>https://maven.pkg.github.com/darkinno-tech-tech/hj1239-java-sdk</url>
 > </repository>
 > ```
 
@@ -217,7 +217,7 @@ mvn package   # Package JAR
 
 ## License
 
-MIT © [im10furry](https://github.com/im10furry)
+MIT © [darkinno-tech-tech](https://github.com/darkinno-tech-tech)
 
 ---
 
@@ -225,6 +225,6 @@ MIT © [im10furry](https://github.com/im10furry)
 
 ⭐ **If this project helps you, please give it a star!** ⭐
 
-[![Star History Chart](https://api.star-history.com/svg?repos=im10furry/hj1239-java-sdk&type=Date)](https://star-history.com/#im10furry/hj1239-java-sdk&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=darkinno-tech-tech/hj1239-java-sdk&type=Date)](https://star-history.com/#darkinno-tech-tech/hj1239-java-sdk&Date)
 
 </div>
