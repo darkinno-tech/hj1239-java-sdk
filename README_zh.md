@@ -1,7 +1,7 @@
 # HJ1239 Java SDK
 
-> *"We are DarkInno. Like a stout beer, our best ideas are brewed slowly in the dark, away from the hype."*  
-> *"我们是 DarkInno。如一杯烈性黑啤，最好的想法都在黑暗中慢酿，远离喧嚣。"*
+> *"We are im10furry. Like a stout beer, our best ideas are brewed slowly in the dark, away from the hype."*  
+> *"我们是 im10furry。如一杯烈性黑啤，最好的想法都在黑暗中慢酿，远离喧嚣。"*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://jdk.java.net/17/)
@@ -38,7 +38,7 @@ Java SDK 实现，严格遵循标准中 Section 5（企业平台通讯协议）�
 
 ```xml
 <dependency>
-    <groupId>io.darkinno</groupId>
+    <groupId>io.im10furry</groupId>
     <artifactId>hj1239-sdk</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -59,7 +59,7 @@ Java SDK 实现，严格遵循标准中 Section 5（企业平台通讯协议）�
 > ```xml
 > <repository>
 >     <id>github</id>
->     <url>https://maven.pkg.github.com/DarkInno/hj1239-java-sdk</url>
+>     <url>https://maven.pkg.github.com/im10furry/hj1239-java-sdk</url>
 > </repository>
 > ```
 
@@ -159,7 +159,7 @@ mvn package   # 打包
 
 ## 开源协议
 
-MIT © [DarkInno](https://github.com/darkinno)
+MIT © [im10furry](https://github.com/im10furry)
 
 ---
 
@@ -167,6 +167,6 @@ MIT © [DarkInno](https://github.com/darkinno)
 
 ⭐ **如果这个项目对你有帮助，请给它一颗星！** ⭐
 
-[![Star History Chart](https://api.star-history.com/svg?repos=darkinno/hj1239-java-sdk&type=Date)](https://star-history.com/#darkinno/hj1239-java-sdk&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=im10furry/hj1239-java-sdk&type=Date)](https://star-history.com/#im10furry/hj1239-java-sdk&Date)
 
 </div>
